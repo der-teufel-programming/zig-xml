@@ -64,22 +64,22 @@ state: State,
 /// - `cdata` - CDATA
 /// - `character_reference` - REF
 /// - `entity_reference` - REF
-spans: std.ArrayListUnmanaged(BufSpan),
+spans: std.ArrayList(BufSpan),
 /// A map of attribute names to indexes.
 /// The keys are slices into `buf`.
-attributes: std.StringArrayHashMapUnmanaged(usize),
+attributes: std.array_hash_map.String(usize),
 /// A map of attribute qnames to indexes.
 /// The key `ns` and `local` values are slices into `buf`.
-q_attributes: std.ArrayHashMapUnmanaged(QName, usize, QNameContext, true),
+q_attributes: std.array_hash_map.Custom(QName, usize, QNameContext, true),
 /// String data for the current element nesting context.
 /// Each element start node appends the name of the element to this buffer, and
 /// the element name is followed by any namespace prefixes and URIs declared on
 /// the element so they can be referenced by `ns_prefixes`.
-strings: std.ArrayListUnmanaged(u8),
+strings: std.ArrayList(u8),
 /// The start indexes of the element names in `strings`.
-element_names: std.ArrayListUnmanaged(StringIndex),
+element_names: std.ArrayList(StringIndex),
 /// The namespace prefixes declared by the current nesting context of elements.
-ns_prefixes: std.ArrayListUnmanaged(std.AutoArrayHashMapUnmanaged(StringIndex, StringIndex)),
+ns_prefixes: std.ArrayList(std.array_hash_map.Auto(StringIndex, StringIndex)),
 /// The Unicode code point associated with the current character reference.
 character: u21,
 
@@ -2511,7 +2511,7 @@ fn addAttributeValueString(reader: *Reader, raw_value: []const u8) !StringIndex 
             else => |b| try reader.strings.append(reader.gpa, b),
         }
     }
-    return @enumFromInt(start);
+    return @fromBackingInt(@intCast(start));
 }
 
 fn checkElementEnd(reader: *Reader) !void {
@@ -2923,7 +2923,7 @@ fn shift(reader: *Reader) !void {
             prefix_bindings.deinit(reader.gpa);
         }
         const element_name_start = reader.element_names.pop().?;
-        reader.strings.shrinkRetainingCapacity(@intFromEnum(element_name_start));
+        reader.strings.shrinkRetainingCapacity(@backingInt(element_name_start));
     }
 }
 
@@ -2976,7 +2976,7 @@ const StringIndexAdapter = struct {
 
     pub fn eql(ctx: @This(), a: []const u8, b: StringIndex, b_index: usize) bool {
         _ = b_index;
-        const b_val = std.mem.sliceTo(ctx.strings[@intFromEnum(b)..], 0);
+        const b_val = std.mem.sliceTo(ctx.strings[@backingInt(b)..], 0);
         return std.mem.eql(u8, a, b_val);
     }
 };
@@ -2986,9 +2986,9 @@ fn addString(reader: *Reader, s: []const u8) !StringIndex {
     reader.strings.appendAssumeCapacity(0);
     const start = reader.strings.items.len;
     reader.strings.appendSliceAssumeCapacity(s);
-    return @enumFromInt(start);
+    return @fromBackingInt(@intCast(start));
 }
 
 fn string(reader: *const Reader, index: StringIndex) []const u8 {
-    return std.mem.sliceTo(reader.strings.items[@intFromEnum(index)..], 0);
+    return std.mem.sliceTo(reader.strings.items[@backingInt(index)..], 0);
 }

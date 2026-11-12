@@ -29,7 +29,7 @@ const Document = struct {
 
     fn parseElement(arena: Allocator, reader: *xml.Reader) !Node.Element {
         const name = try arena.dupe(u8, reader.elementName());
-        var attributes: std.StringArrayHashMapUnmanaged([]const u8) = .empty;
+        var attributes: std.array_hash_map.String([]const u8) = .empty;
         for (0..reader.attributeCount()) |i| {
             try attributes.put(
                 arena,
@@ -150,7 +150,7 @@ const Node = union(enum) {
 
     const Element = struct {
         name: []const u8,
-        attributes: std.StringArrayHashMapUnmanaged([]const u8),
+        attributes: std.array_hash_map.String([]const u8),
         children: []const Node,
     };
 

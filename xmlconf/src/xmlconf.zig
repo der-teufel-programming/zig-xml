@@ -30,7 +30,7 @@ pub fn logImpl(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    if (@intFromEnum(level) > @intFromEnum(log_level)) return;
+    if (@backingInt(level) > @backingInt(log_level)) return;
     std.log.defaultLog(level, scope, format, args);
 }
 

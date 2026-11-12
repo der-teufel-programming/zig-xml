@@ -25,13 +25,13 @@ state: State,
 /// Each element start node appends the name of the element to this buffer, and
 /// the element name is followed by any namespace prefixes and URIs declared on
 /// the element so they can be referenced by `ns_prefixes`.
-strings: std.ArrayListUnmanaged(u8),
+strings: std.ArrayList(u8),
 /// The start indexes of the element names in `strings`.
-element_names: std.ArrayListUnmanaged(StringIndex),
+element_names: std.ArrayList(StringIndex),
 /// The namespace prefixes declared by the current nesting context of elements.
-ns_prefixes: std.ArrayListUnmanaged(std.AutoArrayHashMapUnmanaged(StringIndex, StringIndex)),
+ns_prefixes: std.ArrayList(std.array_hash_map.Auto(StringIndex, StringIndex)),
 /// Pending namespace prefixes to be declared on the next element start.
-pending_ns: std.AutoArrayHashMapUnmanaged(StringIndex, StringIndex),
+pending_ns: std.array_hash_map.Auto(StringIndex, StringIndex),
 /// A counter for the next generated `ns123` namespace prefix to be used.
 gen_ns_prefix_counter: u32,
 
@@ -334,7 +334,7 @@ fn elementStartInternal(writer: *Writer, prefix: []const u8, local: []const u8) 
     writer.state = .element_start;
 
     if (writer.options.namespace_aware) {
-        var ns_prefixes: std.AutoArrayHashMapUnmanaged(StringIndex, StringIndex) = .empty;
+        var ns_prefixes: std.array_hash_map.Auto(StringIndex, StringIndex) = .empty;
         try ns_prefixes.ensureUnusedCapacity(writer.gpa, writer.pending_ns.count());
         var pending_ns_iter = writer.pending_ns.iterator();
         while (pending_ns_iter.next()) |pending_ns| {
@@ -368,7 +368,7 @@ pub fn elementEnd(writer: *Writer) WriteError!void {
     try writer.write(writer.string(name));
     try writer.write(">");
     writer.state = if (writer.element_names.items.len > 0) .after_structure_end else .end;
-    writer.strings.shrinkRetainingCapacity(@intFromEnum(name));
+    writer.strings.shrinkRetainingCapacity(@backingInt(name));
     if (writer.options.namespace_aware) {
         var ns_prefixes = writer.ns_prefixes.pop().?;
         ns_prefixes.deinit(writer.gpa);
@@ -1023,7 +1023,7 @@ const StringIndexAdapter = struct {
 
     pub fn eql(ctx: @This(), a: []const u8, b: StringIndex, b_index: usize) bool {
         _ = b_index;
-        const b_val = std.mem.sliceTo(ctx.strings[@intFromEnum(b)..], 0);
+        const b_val = std.mem.sliceTo(ctx.strings[@backingInt(b)..], 0);
         return std.mem.eql(u8, a, b_val);
     }
 };
@@ -1033,7 +1033,7 @@ fn addString(writer: *Writer, s: []const u8) !StringIndex {
     writer.strings.appendAssumeCapacity(0);
     const start = writer.strings.items.len;
     writer.strings.appendSliceAssumeCapacity(s);
-    return @enumFromInt(start);
+    return @fromBackingInt(@intCast(start));
 }
 
 fn addPrefixedString(writer: *Writer, prefix: []const u8, s: []const u8) !StringIndex {
@@ -1044,11 +1044,11 @@ fn addPrefixedString(writer: *Writer, prefix: []const u8, s: []const u8) !String
     writer.strings.appendSliceAssumeCapacity(prefix);
     writer.strings.appendAssumeCapacity(':');
     writer.strings.appendSliceAssumeCapacity(s);
-    return @enumFromInt(start);
+    return @fromBackingInt(@intCast(start));
 }
 
 fn string(writer: *const Writer, index: StringIndex) []const u8 {
-    return std.mem.sliceTo(writer.strings.items[@intFromEnum(index)..], 0);
+    return std.mem.sliceTo(writer.strings.items[@backingInt(index)..], 0);
 }
 
 test "namespace prefix strings resize bug" {
